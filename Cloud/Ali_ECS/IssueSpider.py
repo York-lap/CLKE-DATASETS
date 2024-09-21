@@ -4,8 +4,10 @@ from fileinput import filename
 from bs4 import BeautifulSoup
 
 from Spider_base.base_spider import BaseSpider
-import json
 import os
+import queue
+import threading
+import time
 
 
 class IssueSpider(BaseSpider):
@@ -15,21 +17,40 @@ class IssueSpider(BaseSpider):
         self.setup()
         self.issue_solution_list = []
         self.log_filename = 'ECS_Spider.log'
-        self.url = f"https://developer.aliyun.com/ask/product/all-3?pageNum="
+        self.url = "https://developer.aliyun.com/ask/product/all-3?pageNum="
+        self.queue = queue.Queue()
 
         if os.path.exists(self.log_filename):
             os.remove(self.log_filename)
 
     def start_requests(self):
-        url = self.url
-        num_pages = 2
+        start_time = time.time()
+        num_pages = 50
         for current_page in range(1, num_pages + 1):
-            url = url + str(current_page)
+            url = self.url + str(current_page)
+            self.queue.put(url)
+
+        for _ in range(5):  # 启动 5 个线程
+            t = threading.Thread(target=self.worker)
+            t.start()
+
+        self.queue.join()
+        end_time = time.time()
+        print(f"程序运行总时间：{end_time - start_time}秒")
+        self.logger.info(f"程序运行总时间：{end_time - start_time}秒")
+
+
+    def worker(self):
+        while True:
+            url = self.queue.get()
             response = self.request_handler(url, headers=self.config['request_headers'])
             if response.status_code == 200:
                 self.parse(response.text)
             else:
-                self.logger.error(f"Error:{response.status_code}[page={current_page}请求失败]")
+                self.logger.error(f"Error:{response.status_code}[page={url.split('=')[-1]}请求失败]")
+            self.queue.task_done()
+
+
 
     def parse(self, html):
         soup = BeautifulSoup(html, 'html.parser')
