@@ -7,6 +7,14 @@
    date：          2024/9/20
 -------------------------------------------------
 """
+import json
+
+
 class Storage:
-    def save_data(self, data):
-        pass
+    def save_data(self, data, filename):
+        try:
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=4)
+            print(f"数据已成功保存到 {filename}")
+        except Exception as e:
+            print(f"保存数据到 {filename} 时发生错误: {e}")
