@@ -40,10 +40,17 @@ class IssueSpider(BaseSpider):
                 status = status_div.text.strip()
                 if status == '已解决':
                     question_title = solved_question.find('h3').text.strip()
-                    # solution = solved_question.find('span', class_='askProduct-item-desc-content').text.strip()
-                    question_link = solved_question.find('a', class_='askProduct-item-title-text')['href']
-                    self.issue_solution_list.append({'question_title': question_title, 'question_link': question_link})
-                    print(self.issue_solution_list)
+                    base_url = "https://developer.aliyun.com"
+                    answer_link = solved_question.find('a', class_='askProduct-item-title-text')['href']
+                    answer_link = base_url + answer_link
+                    answer_response = self.request_handler(answer_link, headers=self.config['request_headers'])
+                    if answer_response.status_code == 200:
+                        answer_soup = BeautifulSoup(answer_response.text, 'html.parser')
+                        solution_div = answer_soup.find('div', class_='answer-right')
+                        if solution_div:
+                            solution = solution_div.find('div', class_='respond-content').text.strip()
+
+                    self.issue_solution_list.append({'question_title': question_title, 'answer_link': answer_link, 'official_solution': solution })
 
 
 
